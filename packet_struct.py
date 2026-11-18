@@ -5,13 +5,35 @@ class IP_Header:
     dst_ip = None #<type 'str'>
     ip_header_len = None #<type 'int'>
     total_len = None    #<type 'int'>
+    identification = 0
+    flags = 0
+    frag_offset = 0
+    protocol = 0
     
     def __init__(self):
         self.src_ip = None
         self.dst_ip = None
         self.ip_header_len = 0
         self.total_len = 0
-    
+
+    def get_protocol(self, buffer):
+        # extract 8 bit protocol field
+        self.protocol = struct.unpack('B', buffer)[0]
+
+    def get_fragmentation_info(self, buffer):
+        # TODO UNTESTED
+        # extract 16 bit block and seperate into 3 flag bits and 13 bit something
+        value = struct.unpack('>H', buffer)[0]
+
+        # Extract the 3 flag bits
+        self.flags = (value >> 13) & 0b111
+
+        # Extract the 13-bit fragment offset
+        offset_value = value & 0x1FFF
+
+        self.frag_offset = offset_value * 8
+        pass
+
     def ip_set(self,src_ip,dst_ip):
         self.src_ip = src_ip
         self.dst_ip = dst_ip
@@ -34,6 +56,16 @@ class IP_Header:
         length = (result & 15)*4
         self.header_len_set(length)
 
+    # def get_header_len(self, value):
+    #     result = struct.unpack('B', value)[0]
+    #     print("Raw first byte:", hex(result))
+    #     print("IHL:", result & 15)
+
+    #     length = (result & 15) * 4
+    #     print("Header length:", length)
+
+    #     self.header_len_set(length)
+
     def get_total_len(self,buffer):
         num1 = ((buffer[0]&240)>>4)*16*16*16
         num2 = (buffer[0]&15)*16*16
@@ -41,6 +73,33 @@ class IP_Header:
         num4 = (buffer[1]&15)
         length = num1+num2+num3+num4
         self.total_len_set(length)
+
+class UDP_Header:
+    src_port =  0
+    dst_port = 0
+
+    def get_ports(self, buffer):
+        # TODO UNTESTED
+        # extract src and dst ports
+        self.src_port = struct.unpack('>H', buffer[0:2])[0]
+        self.dst_port = struct.unpack('>H', buffer[2:4])[0]
+        pass
+
+class ICMP_Header:
+    type = 0
+    code = 0
+    seq_num = 0
+
+    def get_type_and_code(self, buffer):
+        # TODO UNTESTED
+        # Extract type and code (8 bits each)
+        self.type = struct.unpack('B', buffer[0:1])[0]
+        self.code = struct.unpack('B', buffer[1:2])[0]
+
+    def get_sequence_num(self, buffer):
+        # TODO UNTESTED
+        # Sequence number is at bytes 6-7 of the ICMP header
+        self.seq_num = struct.unpack('>H', buffer)[0]
  
 class TCP_Header:
     src_port = 0
@@ -158,6 +217,8 @@ class packet():
     #pcap_hd_info = None
     IP_header = None
     TCP_header = None
+    ICMP_header = None
+    UDP_header = None
     timestamp = 0
     packet_No = 0
     RTT_value = 0
@@ -168,6 +229,8 @@ class packet():
     def __init__(self):
         self.IP_header = IP_Header()
         self.TCP_header = TCP_Header()
+        self.ICMP_header = ICMP_Header()
+        self.UDP_header = UDP_Header()
         #self.pcap_hd_info = pcap_ph_info()
         self.timestamp = 0
         self.packet_No =0
